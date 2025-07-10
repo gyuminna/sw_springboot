@@ -1,0 +1,144 @@
+-- 개인별 평균, 최고, 최저 점수
+spark.sql(" \
+	select irum \
+      ,round(avg(jumsu),2) as avg_jumsu \
+      ,max(jumsu) max_jumsu \
+      ,min(jumsu)min_jumsu \
+    from hakjum_tbl \
+    group by irum \
+	").show()
+	
+-- 개인별 과목별 평균 점수
+spark.sql(" \
+	select irum,gwamok \
+      ,round(avg(jumsu),2) as avg_jumsu \
+      ,max(jumsu) max_jumsu \
+      ,min(jumsu) min_jumsu \
+    from hakjum_tbl \
+    group by irum, gwamok \
+    order by irum, gwamok \
+    ").show()
+
+-- 팀별 최고, 최저, 평균 점수
+spark.sql(" \
+    select team \
+      ,max(jumsu) max_jumsu \
+      ,min(jumsu) min_jumsu \
+    from hakjum_tbl \
+    group by team \
+    order by team \
+    ").show()
+
+
+-- 팀별 평균점수
+-- 조건: 소숫점 이하 2자리
+spark.sql(" select team, round(avg(jumsu),2) as avg \
+    from hakjum_tbl \
+	group by team \
+	order by team " \
+	).show()
+
+==============================
+-- 스마트카
+--
+-- 1. 스마트카 상태 모리터링
+-- 2. 스마트카 운전자 운행기록 정보
+-- 3. 이상운전 패턴 스마트카 정보
+-- 4. 긴급 점검이 필요한 스마트카 정보추가
+-- 5.운전자의 차량용품 구매이력정보
+
+------------------------------
+-- 차량 상태정보(SmartCarStatusInfo : 2,160,200건)
+reg_date string,
+car_number string,
+tire_fl string,
+tire_fr string,
+tire_bl string,
+tire_br string,
+light_fl string,
+light_fr string,
+light_bl string,
+light_br string,
+engine string,
+break string,
+battery string
+
+-- 차량 상태정보 data load
+Car_df = spark.read.csv("./SmartCar/SmartCarStatusInfo.csv", header=True, inferSchema=True)
+
+-----------------
+-- 운전자 상태정보(SmartCarDriverInfo: 2,177,599건)
+date,
+car_number,
+speed_pedal,
+break_pedal,
+steer_angle,
+direct_light,
+speed,
+area_number
+
+-- 운전자 상태정보 data load
+Driver_df = spark.read.csv("./SmartCar/SmartCarDriverInfo.csv", header=True, inferSchema=True)
+
+----------------- 
+-- 차량 용품 구매이력(CarIyemBuyList:10만건)
+car_number string,
+sex string,
+age string,
+marriage string,
+region string,
+job string,
+car_capacity string,
+car_year string,
+car_model string,
+item string,
+score string
+
+-- 차량용품 구매 이력 Data Load 
+Buy_df = spark.read.csv("./SmartCar/CarItemBuyList.csv", header=True, inferSchema=True)
+
+-----------------
+-- 차량 소유자정보(CarMaster:2,600건))
+car_number,
+sex,
+age,
+marriage,
+region,
+job,
+car_capacity,
+car_year   
+
+-- 차량 소유자정보 Data Load
+Master_df = spark.read.csv("./SmartCar/CarMaster.csv", header=True, inferSchema=True)
+
+==============================
+
+-- 스마트카 상태정보 테이블 조회
+select * from SmartCar_Status_Info limit 5;
+
+-- 스마트카 상태정보 테이블에 대한 조건정보 조회
+-- 밧데리량이 60보다 적은 차량의 평균 밧데리량을 조회하시오
+select car_number, avg(battery) as battery_avg
+from SmartCar_Status_Info
+where battery < 60
+group by car_number;
+
+------------------------------
+-- 조인 (운행차량 상태정보, 차량정보)
+-- 차량번호, 생산년도, 차량용량(cc), 엔진상태, 브레이크, 밧데리상태를 조회하시오.. 
+
+select a.car_number, b.car_year,
+       b.car_capacity,  a.engine, a.break,
+	   a.battery
+from smartcar_status_info a, smartcar_master b
+where a.car_number = b.car_number 
+;
+
+-- 차량별 평균 밧데리 
+-- 차량번호, 차량연식, 자동차CC, 평균밧데리량를 조회하시오
+select a.car_number, b.car_year, b.car_capacity,  
+	   avg(a.battery)
+from smartcar_status_info a, smartcar_master b
+where a.car_number = b.car_number 
+group by a.car_number, b.car_year, b.car_capacity
+;

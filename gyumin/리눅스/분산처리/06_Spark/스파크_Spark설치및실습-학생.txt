@@ -1,0 +1,349 @@
+-- 2025.02.23
+-- Spark 설치 및 실습
+
+===================================
+-- Spark 다운로드 및 설치
+
+https://spark.apache.org/downloads.html
+
+tar -xvfC  spark-3.5.4-bin-hadoop3.tgz ./spark
+
+mv spark-3.5.4-bin-hadoop3 ~/spark
+
+------------------
+-- 환경설정
+cd
+vi .bashrc 에 설정추가 
+export SPARK_HOME=~/spark
+export PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin  
+
+source .bashrc
+
+echo $SPARK_HOME
+spark-submit --version
+spark-submit --help
+
+---- spark 환경설정
+cd ~/spark/conf
+cp spark-env.sh.template spark-env.sh
+
+vi ~/spark/conf/spark-env.sh 에 설정추가 
+export SPARK_WORKER_INSTANCES=2
+
+-- pip 설치
+sudo apt-get install software-properties-common -y
+sudo add-apt-repository universe
+sudo apt-get update
+sudo apt-get install python3-pip
+
+-- pandas 설치
+pip install pandas --break-system-packages
+
+-- 실시간 WordCount실습을 위한 netcat 설치(7.1)
+sudo apt-get install netcat-openbsd 1.226-1ubuntu2
+sudo apt-get install netcat
+
+============================
+-- 4. pySpark 실습
+$ pyspark
+
+-- 4.1 pySpark 화면 지우기 : ctl + L
+>>> import os
+>>> os.system('clear')
+
+-- 4.2 spark Session 생성
+>>> from pyspark.sql import SparkSession
+
+>>> spark = SparkSession.builder \
+               .appName("SparkByExamples.com") \
+               .getOrCreate()
+
+--4.3 정의된 변수확인
+ locals() :	현재 정의된 모든 지역 변수 확인
+ globals():	현재 정의된 모든 전역 변수 확인
+ dir()	  :	모든 변수와 객체의 목록 확인
+ %whos, %who :	Jupyter Notebook에서 변수 확인
+ isinstance(): 	특정 타입의 변수만 필터링하여 확인
+ spark.catalog.listTables() :	PySpark에서 사용 가능한 테이블 목록 확인
+
+--4.4 정의된 DataFrame 확인
+>>> from pyspark.sql import DataFrame
+
+-- 현재 정의된 변수 중에서 DataFrame 객체만 출력
+>>> for var_name, obj in locals().items():
+      if isinstance(obj, DataFrame):
+        print(f"{var_name}: {obj}")
+
+
+============================
+-- 5.Data 처리 
+-- 5.1 DataFrame 생성
+
+-- 샘플 데이터
+>>> emp = [("James","","Smith","2020-04-01","M",300000),
+       ("Michael","Rose","","2024-05-19","M",400000),
+       ("Robert","","Williams","2023-09-05","M",400000),
+       ("Maria","Anne","Jones","2019-12-01","F",400000),
+       ("Jen","Mary","Brown","2018-02-17","F",-1)]
+>>> columns = ["firstname","middlename","lastname","ipsail","sex","salary"]
+
+-- DataFrame 생성
+>>> df_emp = spark.createDataFrame(data=emp, schema = columns)
+>>> df_emp.show()
+ 
+------------------
+-- 5.2 DataFrame – CSV 파일 읽기
+>>> hakjum_st = StructType([
+	StructField("team"   ,T.StringType(), True),
+	StructField("irum"   ,T.StringType(), True),
+	StructField("gwamok" ,T.StringType(), True),
+	StructField("jumsu"  ,T.StringType(), True)
+])
+
+-- 데이터 header 활용
+>>> df_hakjum=spark.read.csv("./hakjum.dat", header=True, inferSchema=True)
+
+-- 데이터 schema 활용
+>>> df_hakjum=spark.read.csv("./hakjum.dat", header=True, schema=hakjum_st)
+
+-- 구분자 사용
+>>> df_movie=spark.read.option("delimiter","\t").csv("movie.data", header=True, inferSchema=True)
+
+------------------
+-- 5.3 Data 조회 –함수
+>>> df.count() – 각 열의 개수를 반환합니다(개수에는 null이 아닌 값만 포함됨).
+>>> df.corr() – 데이터 프레임의 열 간의 상관 관계를 반환합니다.
+>>> df.head(n) – 맨 위에서 처음 n개 행을 반환합니다.
+>>> df.max() – 각 열의 최대값을 반환합니다.
+>>> df.mean() – 각 열의 평균을 반환합니다.
+>>> df.median() – 각 열의 중앙값을 반환합니다.
+>>> df.min() – 각 열의 최소값을 반환합니다.
+>>> df.std() – 각 열의 표준 편차를 반환합니다.
+>>> df.tail(n) – 마지막 n개 행을 반환합니다.
+
+>>> select() – DataFrame에서 특정 열을 선택합니다.
+>>> filter() – 조건에 따라 행을 필터링합니다.
+>>> groupBy() – 하나 이상의 열을 기준으로 행을 그룹화합니다.
+>>> agg() – 그룹화된 데이터에 대해 집계 함수(예: 합계, 평균)를 수행합니다.
+>>> orderBy() – 하나 이상의 열을 기준으로 행을 정렬합니다.
+>>> dropDuplicates() – DataFrame에서 중복 행을 제거합니다.
+>>> withColumn() – 새 열을 추가하거나 기존 열을 수정된 데이터로 바꿉니다.
+>>> drop() – DataFrame에서 하나 이상의 열을 제거합니다.
+>>> join() – 공통 열 또는 인덱스를 기반으로 두 개의 DataFrame을 병합합니다.
+>>> pivot() – DataFrame을 피벗하여 열 값을 기반으로 데이터를 재구성합니다.
+
+------------------
+-- 5.4 Data 조회 – select, groupby, filter, join
+
+>>> from pyspark.sql.functions import mean, max, min
+>>> from pyspark.sql.functions import col, when
+
+-- 1) select 
+>>> df_hakjum.select("team","gwamok","jumsu").show()
+
+>>> df_hakjum.select(mean("jumsu")).show()
+
+>>> from pyspark.sql.functions import col, when
+
+>>> df_hakjum = df_hakjum.withColumn(
+ "hakjum",
+ when(col("jumsu") < 60, "F")
+ .when(col("jumsu").between(60,69), "D")
+ .when(col("jumsu").between(70,79), "C")
+ .when(col("jumsu").between(80,89), "B")
+ .otherwise("A"))
+
+
+-- 2) 그룹의 사용
+>>> df_hakjum.groupby("team","gwamok").count().show()
+
+>>> df_hakjum.groupby("team","gwamok")\
+         .agg(mean("jumsu"),max("jumsu"), min("jumsu"))\
+         .show()
+>>> df_hakjum.groupby("team","gwamok").mean("jumsu").show()	
+
+-- 3) Filter 사용
+>>> df_hakjum.filter(df_hakjum["gwamoK"] == "java").show()
+>>> df_hakjum.filter(df_hakjum["jumsu"].between(70, 80)).show()
+
+-- 4) Join 사용
+>>> from pyspark.sql import SparkSession
+
+-- (1) Join SparkSession 생성
+>>> spark = SparkSession.builder.appName("Join Example").getOrCreate()
+
+>>> data1 = [(1, "Alice", 25), (2, "Bob", 30), (3, "Charlie", 35)]
+>>> data2 = [(1, "HR"), (2, "Engineering"), (4, "Marketing")]
+>>> columns1 = ["id", "name", "age"]
+>>> columns2 = ["id", "department"]
+
+>>> df1 = spark.createDataFrame(data1, columns1)
+>>> df2 = spark.createDataFrame(data2, columns2)
+
+-- (2) Join 실습
+-- LEFT JOIN
+>>> df_left = df1.join(df2, "id", "left")
+>>> df_left.show()
+
+-- RIGHT JOIN
+>>> df_right = df1.join(df2, "id", "right")
+>>> df_right.show()
+
+-- OUTER JOIN
+>>> df_outer = df1.join(df2, "id", "outer")
+>>> df_outer.show()
+
+-- 필요한 컬럼만 선택
+>>> df1.join(df2, "id").select(df1.id, df1.name, df2.department).show()
+
+
+-- 5) Table, view 생성
+-- (1) Table 생성
+>>> df_hakjum.write.saveAsTable("hakjum_tbl")
+
+-- (2) view 생성
+>>> df_hakjum.createOrReplaceTempView("hakjum_view")
+
+-- (3) 생성Table 확인
+>>> spark.catalog.listTables()
+>>> spark.sql("SHOW TABLES").show()
+>>> spark.catalog.listTables("default")
+>>> spark.sql("DESCRIBE hakjum_tbl ").show()
+>>> spark.catalog.listDatabases()
+>>> spark.catalog.tableExists("hakjum_tbl")
+>>> spark.catalog.listColumns(" hakjum_tbl ")
+>>> spark.sql("SELECT current_database()").show()
+
+-- 6) Spark.sql – 조회 
+-- (1)Table로 조회
+>>> spark.sql("select team, irum, gwamok,jumsu from hakjum_tbl").show()
+>>> spark.sql("select team, gwamok,avg(jumsu) from hakjum_tbl \
+                 group by team,gwamok").show()
+>>> spark.sql(" \
+    select irum, count(*)   \
+        ,max(jumsu) jum_max \
+        ,min(jumsu) jum_min \
+        ,round(avg(jumsu),2) jum_avg \
+    from hakjum_tbl \
+	group by irum ").show()
+	
+-- (2)view로 조회
+>>> spark.sql("select team, irum, gwamok,jumsu from hakjum_view").show()
+
+-- (3)dataframe으로 조회
+>>> spark.sql("select team, irum, gwamok,jumsu from {df} ", df=df_hakjum).show()
+
+
+============================
+-- 6. Data의 변환
+-- 6.1 Pyspark에서 Pandas를 활용
+
+>>> import pandas as pd
+
+# Pandas DataFrame 생성
+>>> data = {"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]}
+>>> pdf = pd.DataFrame(data)
+>>> df_emp.dtypes
+
+# Pandas DataFrame 출력
+>>> print(pdf)
+
+------------------
+-- 6.2 PySpark DataFrame → Pandas DataFrame 변환
+>>> from pyspark.sql import SparkSession
+
+# SparkSession 생성
+>>> spark = SparkSession.builder.appName("PandasExample").getOrCreate()
+
+# PySpark DataFrame 생성
+>>> data = [(1, "Alice"), (2, "Bob"), (3, "Charlie")]
+>>> columns = ["id", "name"]
+
+>>> df = spark.createDataFrame(data, columns)
+
+# PySpark DataFrame을 Pandas DataFrame으로 변환
+>>> pdf = df.toPandas()
+
+>>> print(pdf)  # Pandas DataFrame 출력
+
+------------------
+-- 6.3 Pandas DataFrame → PySpark DataFrame 변환
+>>> spark_df = spark.createDataFrame(pdf)
+
+# PySpark DataFrame 출력
+>>> spark_df.show()  
+
+------------------
+-- 6.4 PySpark에서 pandas UDF(User Defined Function) 사용
+>>> from pyspark.sql.functions import pandas_udf
+>>> from pyspark.sql.types import IntegerType
+
+# pandas UDF 정의
+>>> @pandas_udf(IntegerType())
+>>> def squared_udf(s: pd.Series) -> pd.Series:
+    return s * s
+
+# PySpark DataFrame에 UDF 적용
+>>> df = spark.createDataFrame([(1,), (2,), (3,)], ["value"])
+>>> df.withColumn("squared", squared_udf(df["value"])).show()
+
+============================
+-- 7. 실시간 WordCount
+
+-- 네트워크 소켓 서버 구동
+$ nc -lk 9999
+  - nc: netcat 프로그램 실행 명령어
+  - l: listening 모드 활성화
+       이 옵션을 통해 netcat은 연결을 기다리는 서버로 동작
+  - k: 연결이 끊어진 후에도 계속해서 리스닝을 유지한다.
+  - 9999: netcat이 연결을 수신할 네트워크 포트 번호 
+
+------------------
+-- 7.2 실시간 Streaming WC
+>>> from pyspark.sql import SparkSession
+>>> from pyspark.sql.functions import explode, split
+
+
+-- SparkSession 초기화
+>>> spark = SparkSession.builder \
+    .appName("StructuredNetworkWordCount") \
+    .getOrCreate()
+
+-- 스트리밍 데이터 소스로부터 데이터 읽기 설정
+>>> lines = spark.readStream \
+    .format("socket") \
+    .option("host", "localhost") \
+    .option("port", 9999) \
+    .load()
+
+-- 입력 데이터에서 단어 분할
+>>> words = lines.select(
+    explode(split(lines.value, " ")
+    ).alias("word")
+)
+
+-- 단어의 출현 빈도 계산
+>>> wordCounts = words.groupBy("word").count()
+
+-- 결과를 콘솔에 출력하는 스트리밍 쿼리 시작
+>>> query = wordCounts.writeStream \
+    .outputMode("complete") \
+    .format("console") \
+    .start()
+
+>>> query.awaitTermination()
+
+
+============================
+-- 8. Spark와 Hadoop
+-- hdfs 에 파일 저장
+
+carDat=spark.read.csv("/home/hadoop/SmartCar/SmartCarStatusInfo.csv", header=True, inferSchema=True)
+
+-- hadoop에 있는 데이터 읽어오기
+df=spark.read.csv("hdfs://master:9000/smartcar/SmartCarStatusInfo", header=True, inferSchema=True)
+
+-- hadoop에 데이터 저장하기
+carDat.write.csv("hdfs://master:9000/smartcar/SmartCarStatusInfo", header=True)
+
+carDat.write.csv("hdfs://master:9000/smartcar/SmartCarStatusInfo", header=True)

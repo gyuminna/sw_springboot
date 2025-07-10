@@ -1,0 +1,86 @@
+-- login(hadoop Kit)
+hadoop/hadoop
+
+----------------------------
+-- 하둡 초기화
+hadoop_init
+
+-- 하둡 실행
+start-all.sh
+(==)
+start-dfs.sh && start-yarn.sh 
+
+-- 하둡 종료
+stop-all.sh
+
+-- 하둡명령어
+hdfs dfs -ls /
+hdfs dfs -mkdir /aysdat
+hdfs dfs -put *.txt /aysdat/
+hdfs dfs -cat /aysdat/alice.txt
+hdfs dfs -cp /aysdat/alice.txt /aysdat/alice2.txt  
+hdfs dfs -mv /aysdat/alice2.txt /aysdat/alice-mv.txt  
+hdfs dfs -rm -r /aysdat/
+hdfs dfs -get /aysdat/alice-mv.txt  
+
+----------------------------
+-- wordcount 분석을 위한 준비
+1. wordcount 프로그램 작성
+2. sampleData 만들기
+3. wordcount.jar, sampleData 서버에 Upload
+4. 하둡에 sampleData Upload
+
+-- wordcount 실행
+yarn jar mapreduce-0.0.1-SNAPSHOT.jar bigdata.mapreduce.WordCount /aysdat/* /wcnt
+--
+-- 명령어설명
+	1.yarn jar : 하둡에서 jar파일 실행 명령 
+	2.mapreduce-0.0.1-SNAPSHOT.jar  : WordCount 프로그램 패키지
+	3.bigdata.mapreduce.WordCount : 실행할 클래스 파일
+	4./aysdat/*.txt : 분석할 데이터 위치
+	5./wcnt : 분석결과를 보관할 위치
+
+-- 쉘 이용하여 wordcount 실행하기
+$ nano wc.sh
+  yarn jar mapreduce-0.0.1-SNAPSHOT.jar bigdata.mapreduce.WordCount ${1} ${2}
+  
+$ chmod 755 wc.sh
+
+$ ./wc.sh /aysdat/law.txt /wcnt2
+
+
+-- 도전!! wordcount 실습
+1.d:\Hadoop\03.WordCount\분석용데이터\wc_data2.txt
+2.파일을 하둡의 /tmp directory에 업로드
+3.wordcount 을 실행하여 결과를 /wc01에 저장하기..
+
+=============================
+대통령 신년사(1대~ 19대)를 하둡 시스템을 이용하여 wordcount를 수행하시오..
+
+--분석을 위한 데이터 저장위치
+-- Linux 
+  ~/vip
+  
+-- hadoop 
+  /hdfs-vvip
+  
+-- 분석 결과 저장위치  
+  /rs-vip
+  
+1. data분석을 위한 dractory 생성
+  1) 리눅스 : mkdir ~/linux-vip 
+  2) hadoop: hdfs dfs -mkdir /hdfs-vip 
+  
+2. ftp를 이용하여 분석용 파일(대통령신년사) 저장
+  1)fileZilla 활용 -> linux 저장 ~/linux-vip
+  2)linux -> hadoop에 저장 
+    hdfs dfs -put ./* /hdfs-vip
+3. word count 프로그램 실행
+  yarn jar mapreduce-0.0.1-SNAPSHOT.jar bigdata.mapreduce.WordCount ~/hdfs-vip/ /rs-vip
+  
+4. 결과 파일 가져오기
+  hdfs dfs -get /rs-vip/part-r-00000 
+
+4. 결과 파일 자기 PC에 가져오기
+   fileZilla 활용
+ 
